@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PM Tool Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 0; background: #f8f9fb; color: #1f2937; }
+    header { background: #111827; color: white; padding: 16px 24px; }
+    header h1 { margin: 0; font-size: 1.5rem; }
+    .container { display: grid; gap: 16px; padding: 16px; max-width: 1400px; margin: auto; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); }
+    .card h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    .card small { color: #6b7280; }
+    .section { display: flex; flex-direction: column; gap: 12px; }
+    button { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: background 0.2s ease; }
+    button:hover { background: #1d4ed8; }
+    input, textarea, select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; outline: none; font-size: 0.95rem; }
+    #riceTable input { background: transparent; border: none; box-shadow: none; padding: 8px 4px; color: inherit; }
+    input:focus, textarea:focus, select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; vertical-align: top; }
+    th { background: #f3f4f6; font-weight: 600; }
+    .kanban-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .kanban-column { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; min-height: 220px; }
+    .kanban-column.todo { background: #eff6ff; }
+    .kanban-column.inprogress { background: #fef3c7; }
+    .kanban-column.done { background: #dcfce7; }
+    .kanban-column h3 { margin-top: 0; }
+    .kanban-card { background: white; border: 1px solid #d1d5db; border-radius: 10px; padding: 10px; margin-bottom: 10px; cursor: grab; }
+    .moscow-column { padding: 12px; border-radius: 12px; min-height: 140px; }
+    .moscow-column.must { background: #fee2e2; border: 1px solid #fca5a5; }
+    .moscow-column.should { background: #fde68a; border: 1px solid #facc15; }
+    .moscow-column.could { background: #dbeafe; border: 1px solid #93c5fd; }
+    .moscow-column.wont { background: #e2e8f0; border: 1px solid #cbd5e1; }
+    .moscow-column h3 { margin-top: 0; }
+    .diagram-area { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 12px; min-height: 450px; position: relative; overflow: hidden; }
+    .diagram-inner { position: absolute; top: 0; left: 0; width: 1800px; height: 1200px; transform-origin: 0 0; }
+    .diagram-inner svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    .diagram-area .diagram-item { position: absolute; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px; min-width: 140px; min-height: 80px; cursor: grab; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12); overflow: hidden; }
+    .diagram-area .diagram-item.rectangle { border-radius: 10px; }
+    .diagram-area .diagram-item.rounded { border-radius: 24px; }
+    .diagram-area .diagram-item.circle { border-radius: 50%; }
+    .diagram-area .diagram-item.selected { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35); }
+    .diagram-area .diagram-item textarea { width: 100%; height: 100%; border: none; resize: none; background: transparent; font: inherit; color: inherit; }
+    .diagram-area .diagram-item .resize-handle { position: absolute; width: 12px; height: 12px; background: white; border: 1px solid #9ca3af; border-radius: 4px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15); z-index: 2; }
+    .diagram-area .diagram-item .resize-handle:hover { background: #eef2ff; border-color: #2563eb; }
+    .diagram-area .diagram-item .resize-handle.top-left { top: -6px; left: -6px; cursor: nwse-resize; }
+    .diagram-area .diagram-item .resize-handle.top-right { top: -6px; right: -6px; cursor: nesw-resize; }
+    .diagram-area .diagram-item .resize-handle.bottom-left { bottom: -6px; left: -6px; cursor: nesw-resize; }
+    .diagram-area .diagram-item .resize-handle.bottom-right { bottom: -6px; right: -6px; cursor: nwse-resize; }
+    .diagram-area .diagram-item .resize-handle.top { top: -6px; left: calc(50% - 6px); cursor: ns-resize; }
+    .diagram-area .diagram-item .resize-handle.bottom { bottom: -6px; left: calc(50% - 6px); cursor: ns-resize; }
+    .diagram-area .diagram-item .resize-handle.left { left: -6px; top: calc(50% - 6px); cursor: ew-resize; }
+    .diagram-area .diagram-item .resize-handle.right { right: -6px; top: calc(50% - 6px); cursor: ew-resize; }
+    .diagram-item .color-picker { width: 100%; margin-top: 8px; }
+    .diagram-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+    .diagram-controls label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 0.9rem; }
+    .diagram-controls input, .diagram-controls select { width: auto; min-width: 70px; }
+    .diagram-controls input[type="color"] { width: 45px; padding: 0; border: none; background: transparent; cursor: pointer; }
+    .diagram-pan-help { color: #374151; font-size: 0.9rem; }
+    .help-text { margin: 0; color: #4b5563; font-size: 0.95rem; line-height: 1.4; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; }
+    .toolbar button { flex: 1 1 auto; }
+    .section-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .section-actions button { flex: 0 1 auto; font-size: 0.9rem; }
+    .note-input { display: flex; gap: 10px; align-items: stretch; }
+    .note-input input { flex: 1 1 auto; min-width: 180px; }
+    .note-input select { flex: 0 0 180px; min-width: 140px; }
+    .note-input button { flex: 0 0 auto; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PM Tool Dashboard</h1>
+    <p>Simple project management board with MOSCOW, RICE, Kanban, PRD, and diagram board.</p>
+  </header>
+
+  <main class="container">
+    <section class="card" id="moscowSection">
+      <div class="section">
+        <h2>MOSCOW Prioritization</h2>
+        <div class="section-actions">
+          <button type="button" onclick="exportMoscowText()">Download text</button>
+          <button type="button" onclick="exportSectionImage('moscowSection', 'moscow.png')">Download image</button>
+        </div>
+        <div class="note-input">
+          <input id="moscowText" type="text" placeholder="Add a MoSCoW item" />
+          <select id="moscowPriority">
+            <option value="Must">Must</option>
+            <option value="Should">Should</option>
+            <option value="Could">Could</option>
+            <option value="Won't">Won't</option>
+          </select>
+          <button type="button" onclick="addMoscowItem()">Add</button>
+        </div>
+        <div id="moscowLists" class="grid-2"></div>
+      </div>
+    </section>
+
+    <section class="card" id="riceSection">
+      <div class="section">
+        <h2>RICE Scoring</h2>
+        <div class="section-actions">
+          <button type="button" onclick="exportRiceText()">Download text</button>
+          <button type="button" onclick="exportSectionImage('riceSection', 'rice.png')">Download image</button>
+        </div>
+        <p class="help-text"><strong>Formula:</strong> Score = (Reach × Impact × Confidence) / Effort</p>
+        <p class="help-text">Example: Reach = 200, Impact = 4, Confidence = 80, Effort = 5 → Score = (200 × 4 × 80) / 5 = 12,800</p>
+        <p class="help-text">Use Confidence as a percentage (0–100). Use Reach, Impact and Effort as numeric values.</p>
+        <div class="note-input">
+          <input id="riceFeature" type="text" placeholder="Feature name" />
+          <button type="button" onclick="addRiceRow()">Add row</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Feature</th><th>Reach</th><th>Impact</th><th>Confidence</th><th>Effort</th><th>Score</th></tr>
+          </thead>
+          <tbody id="riceTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="kanbanSection">
+      <div class="section">
+        <h2>Kanban Board</h2>
+        <div class="section-actions">
+          <button type="button" onclick="exportKanbanText()">Download text</button>
+          <button type="button" onclick="exportSectionImage('kanbanSection', 'kanban.png')">Download image</button>
+        </div>
+        <div class="note-input">
+          <input id="kanbanCardText" type="text" placeholder="New card title" />
+          <button type="button" onclick="createKanbanCard()">Create card</button>
+        </div>
+        <div class="kanban-board">
+          <div class="kanban-column todo" ondrop="dropCard(event)" ondragover="allowDrop(event)">
+            <h3>To Do</h3>
+            <div id="todoColumn"></div>
+          </div>
+          <div class="kanban-column inprogress" ondrop="dropCard(event)" ondragover="allowDrop(event)">
+            <h3>In Progress</h3>
+            <div id="inProgressColumn"></div>
+          </div>
+          <div class="kanban-column done" ondrop="dropCard(event)" ondragover="allowDrop(event)">
+            <h3>Done</h3>
+            <div id="doneColumn"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="prdSection">
+      <div class="section">
+        <h2>Product Requirements Document (PRD)</h2>
+        <div class="section-actions">
+          <button type="button" onclick="exportPrdText()">Download text</button>
+          <button type="button" onclick="exportSectionImage('prdSection', 'prd.png')">Download image</button>
+        </div>
+        <textarea id="prdText" rows="10" placeholder="Write your PRD here..."></textarea>
+      </div>
+    </section>
+
+    <section class="card" id="diagramSection">
+      <div class="section">
+        <h2>Diagram Board</h2>
+        <div class="section-actions">
+          <button type="button" onclick="exportDiagramText()">Download text</button>
+          <button type="button" onclick="exportSectionImage('diagramSection', 'diagram.png')">Download image</button>
+        </div>
+        <div class="diagram-controls">
+          <button type="button" onclick="addDiagramItem()">Add box</button>
+          <button id="arrowModeButton" type="button" onclick="toggleArrowMode()">Add arrow</button>
+          <label>Color <input id="boxColor" type="color" value="#eef2ff" onchange="updateCurrentColor(this.value)" /></label>
+          <label>Background <input id="selectedBoxColor" type="color" value="#eef2ff" onchange="updateSelectedBoxProperty('background', this.value)" /></label>
+          <label>Text <input id="selectedBoxTextColor" type="color" value="#1f2937" onchange="updateSelectedBoxProperty('textColor', this.value)" /></label>
+          <label>Width <input id="boxWidth" type="number" min="80" value="180" onchange="updateSelectedBoxProperty('width', this.value)" /></label>
+          <label>Height <input id="boxHeight" type="number" min="60" value="120" onchange="updateSelectedBoxProperty('height', this.value)" /></label>
+          <label>Font <input id="boxFontSize" type="number" min="10" value="14" onchange="updateSelectedBoxProperty('fontSize', this.value)" /></label>
+          <label>Shape <select id="boxShape" onchange="updateSelectedBoxProperty('shape', this.value)"><option value="rectangle">Rectangle</option><option value="rounded">Rounded</option><option value="circle">Circle</option></select></label>
+          <button type="button" onclick="zoomDiagram(0.1)">Zoom in</button>
+          <button type="button" onclick="zoomDiagram(-0.1)">Zoom out</button>
+          <button type="button" onclick="resetDiagramView()">Reset view</button>
+          <button type="button" onclick="clearDiagram()">Clear board</button>
+        </div>
+        <div class="diagram-pan-help">Drag background to pan board. Click boxes to select arrow endpoints.</div>
+        <div id="diagramArea" class="diagram-area">
+          <div id="diagramInner" class="diagram-inner">
+            <svg id="diagramSvg"></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    const moscowLists = document.getElementById('moscowLists');
+    const riceTable = document.getElementById('riceTable');
+    const diagramArea = document.getElementById('diagramArea');
+    const diagramInner = document.getElementById('diagramInner');
+    const diagramSvg = document.getElementById('diagramSvg');
+    const arrowModeButton = document.getElementById('arrowModeButton');
+    const boxColorInput = document.getElementById('boxColor');
+    const boxWidthInput = document.getElementById('boxWidth');
+    const boxHeightInput = document.getElementById('boxHeight');
+    const boxFontSizeInput = document.getElementById('boxFontSize');
+    const boxShapeSelect = document.getElementById('boxShape');
+    const selectedColorInput = document.getElementById('selectedBoxColor');
+    const selectedTextColorInput = document.getElementById('selectedBoxTextColor');
+    const columns = { Must: [], Should: [], Could: [], "Won't": [] };
+    let diagramCounter = 0;
+    let diagramScale = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let diagramArrowMode = false;
+    let arrowStartId = null;
+    let selectedBox = null;
+    let defaultBoxWidth = parseInt(boxWidthInput.value, 10) || 180;
+    let defaultBoxHeight = parseInt(boxHeightInput.value, 10) || 120;
+    let defaultBoxFontSize = parseInt(boxFontSizeInput.value, 10) || 14;
+    let defaultBoxShape = boxShapeSelect.value || 'rectangle';
+
+    diagramArea.style.touchAction = 'none';
+    diagramArea.addEventListener('pointerdown', event => {
+      if (event.target !== diagramArea) return;
+      isPanning = true;
+      panStartX = event.clientX - panX;
+      panStartY = event.clientY - panY;
+      diagramArea.setPointerCapture(event.pointerId);
+    });
+
+    diagramArea.addEventListener('pointermove', event => {
+      if (!isPanning) return;
+      panX = event.clientX - panStartX;
+      panY = event.clientY - panStartY;
+      updateDiagramTransform();
+    });
+
+    diagramArea.addEventListener('pointerup', () => {
+      isPanning = false;
+    });
+
+    diagramArea.addEventListener('click', event => {
+      if (event.target === diagramArea) {
+        arrowStartId = null;
+        document.querySelectorAll('.diagram-item').forEach(item => item.classList.remove('selected'));
+        selectedBox = null;
+        if (!diagramArrowMode) {
+          return;
+        }
+        if (diagramArrowMode) {
+          document.querySelectorAll('.diagram-item').forEach(item => item.classList.remove('selected'));
+        }
+      }
+    });
+
+    function updateDiagramTransform() {
+      diagramInner.style.transform = `translate(${panX}px, ${panY}px) scale(${diagramScale})`;
+      updateAllArrows();
+    }
+
+    function renderMoscow() {
+      moscowLists.innerHTML = '';
+      for (const label of ['Must', 'Should', 'Could', "Won't"]) {
+        const section = document.createElement('div');
+        const className = label.toLowerCase().replace("'", '').replace(' ', '');
+        section.className = `moscow-column ${className}`;
+        section.innerHTML = `<h3>${label}</h3><ul id="moscow-${label}" style="padding-left: 16px; margin: 0;"></ul>`;
+        moscowLists.appendChild(section);
+        const list = section.querySelector('ul');
+        list.innerHTML = columns[label].map(item => `<li>${item}</li>`).join('');
+      }
+    }
+
+    function addMoscowItem() {
+      const text = document.getElementById('moscowText').value.trim();
+      const priority = document.getElementById('moscowPriority').value;
+      if (!text) return;
+      columns[priority].push(text);
+      document.getElementById('moscowText').value = '';
+      renderMoscow();
+    }
+
+    function addRiceRow() {
+      const feature = document.getElementById('riceFeature').value.trim();
+      if (!feature) return;
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${feature}</td>
+        <td><input type="number" min="0" step="1" value="0" oninput="updateRiceScore(this)" /></td>
+        <td><input type="number" min="0" step="0.1" value="0" oninput="updateRiceScore(this)" /></td>
+        <td><input type="number" min="0" max="100" step="1" value="0" oninput="updateRiceScore(this)" /></td>
+        <td><input type="number" min="0.1" step="0.1" value="1" oninput="updateRiceScore(this)" /></td>
+        <td class="rice-score">0</td>
+      `;
+      riceTable.appendChild(row);
+      document.getElementById('riceFeature').value = '';
+    }
+
+    function updateRiceScore(input) {
+      const row = input.closest('tr');
+      const reach = parseFloat(row.children[1].querySelector('input').value) || 0;
+      const impact = parseFloat(row.children[2].querySelector('input').value) || 0;
+      const confidence = parseFloat(row.children[3].querySelector('input').value) || 0;
+      const effort = parseFloat(row.children[4].querySelector('input').value) || 1;
+      const score = effort === 0 ? 0 : ((reach * impact * confidence) / effort).toFixed(1);
+      row.children[5].textContent = score;
+    }
+
+    function createKanbanCard() {
+      const text = document.getElementById('kanbanCardText').value.trim();
+      if (!text) return;
+      const card = document.createElement('div');
+      card.className = 'kanban-card';
+      card.draggable = true;
+      card.textContent = text;
+      card.addEventListener('dragstart', event => event.dataTransfer.setData('text/plain', card.id || (card.id = `kanban-${Date.now()}`)));
+      const container = document.getElementById('todoColumn');
+      container.appendChild(card);
+      document.getElementById('kanbanCardText').value = '';
+    }
+
+    function allowDrop(event) {
+      event.preventDefault();
+    }
+
+    function dropCard(event) {
+      event.preventDefault();
+      const id = event.dataTransfer.getData('text/plain');
+      const card = document.getElementById(id) || document.querySelector(`[id='${id}']`);
+      if (card) {
+        event.currentTarget.querySelector('div').appendChild(card);
+      }
+    }
+
+    function addDiagramItem() {
+      const item = document.createElement('div');
+      item.className = `diagram-item ${defaultBoxShape}`;
+      item.dataset.id = `diagram-box-${diagramCounter}`;
+      const offset = diagramCounter * 30;
+      item.style.top = `${20 + offset}px`;
+      item.style.left = `${20 + offset}px`;
+      item.style.background = boxColorInput.value;
+      item.style.width = `${defaultBoxWidth}px`;
+      item.style.height = `${defaultBoxHeight}px`;
+      item.style.fontSize = `${defaultBoxFontSize}px`;
+      item.innerHTML = `
+        <textarea rows="3" placeholder="Diagram note"></textarea>
+        <div class="resize-handle top-left" data-direction="nw"></div>
+        <div class="resize-handle top" data-direction="n"></div>
+        <div class="resize-handle top-right" data-direction="ne"></div>
+        <div class="resize-handle right" data-direction="e"></div>
+        <div class="resize-handle bottom-right" data-direction="se"></div>
+        <div class="resize-handle bottom" data-direction="s"></div>
+        <div class="resize-handle bottom-left" data-direction="sw"></div>
+        <div class="resize-handle left" data-direction="w"></div>
+      `;
+      const textarea = item.querySelector('textarea');
+      textarea.style.background = 'transparent';
+      textarea.style.color = 'inherit';
+      textarea.addEventListener('focus', () => selectBox(item));
+      item.addEventListener('click', event => {
+        if (diagramArrowMode && event.target.tagName !== 'TEXTAREA') {
+          selectArrowPoint(item);
+          event.stopPropagation();
+          return;
+        }
+        selectBox(item);
+        if (event.target.tagName === 'TEXTAREA') {
+          event.stopPropagation();
+        }
+      });
+      makeDraggable(item);
+      makeResizable(item);
+      diagramInner.appendChild(item);
+      selectBox(item);
+      textarea.focus();
+      diagramCounter += 1;
+    }
+
+    function makeDraggable(elem) {
+      let offsetX = 0;
+      let offsetY = 0;
+      let dragging = false;
+      elem.addEventListener('pointerdown', event => {
+        if (event.target.tagName === 'TEXTAREA' || event.target.classList.contains('resize-handle')) return;
+        dragging = true;
+        const rect = diagramArea.getBoundingClientRect();
+        const startX = (event.clientX - rect.left - panX) / diagramScale;
+        const startY = (event.clientY - rect.top - panY) / diagramScale;
+        offsetX = startX - parseFloat(elem.style.left || 0);
+        offsetY = startY - parseFloat(elem.style.top || 0);
+        elem.setPointerCapture(event.pointerId);
+      });
+      elem.addEventListener('pointermove', event => {
+        if (!dragging) return;
+        const rect = diagramArea.getBoundingClientRect();
+        const currentX = (event.clientX - rect.left - panX) / diagramScale;
+        const currentY = (event.clientY - rect.top - panY) / diagramScale;
+        elem.style.left = `${currentX - offsetX}px`;
+        elem.style.top = `${currentY - offsetY}px`;
+        updateAllArrows();
+      });
+      elem.addEventListener('pointerup', () => dragging = false);
+      elem.addEventListener('pointerleave', () => dragging = false);
+    }
+
+    function makeResizable(elem) {
+      let resizing = false;
+      let direction = '';
+      let startX = 0;
+      let startY = 0;
+      let startWidth = 0;
+      let startHeight = 0;
+      let startLeft = 0;
+      let startTop = 0;
+
+      const handles = elem.querySelectorAll('.resize-handle');
+      handles.forEach(handle => {
+        handle.addEventListener('pointerdown', event => {
+          event.stopPropagation();
+          direction = handle.dataset.direction;
+          resizing = true;
+          const rect = diagramArea.getBoundingClientRect();
+          startX = (event.clientX - rect.left - panX) / diagramScale;
+          startY = (event.clientY - rect.top - panY) / diagramScale;
+          startWidth = parseFloat(elem.style.width) || elem.offsetWidth;
+          startHeight = parseFloat(elem.style.height) || elem.offsetHeight;
+          startLeft = parseFloat(elem.style.left) || 0;
+          startTop = parseFloat(elem.style.top) || 0;
+          window.addEventListener('pointermove', doResize);
+          window.addEventListener('pointerup', stopResize, { once: true });
+        });
+      });
+
+      function doResize(event) {
+        if (!resizing) return;
+        const rect = diagramArea.getBoundingClientRect();
+        const currentX = (event.clientX - rect.left - panX) / diagramScale;
+        const currentY = (event.clientY - rect.top - panY) / diagramScale;
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+        let newLeft = startLeft;
+        let newTop = startTop;
+
+        if (direction.includes('e')) {
+          newWidth = Math.max(60, startWidth + (currentX - startX));
+        }
+        if (direction.includes('s')) {
+          newHeight = Math.max(40, startHeight + (currentY - startY));
+        }
+        if (direction.includes('w')) {
+          newWidth = Math.max(60, startWidth - (currentX - startX));
+          newLeft = startLeft + (currentX - startX);
+        }
+        if (direction.includes('n')) {
+          newHeight = Math.max(40, startHeight - (currentY - startY));
+          newTop = startTop + (currentY - startY);
+        }
+
+        if (elem.classList.contains('circle')) {
+          const size = Math.max(newWidth, newHeight);
+          newWidth = size;
+          newHeight = size;
+        }
+
+        elem.style.width = `${newWidth}px`;
+        elem.style.height = `${newHeight}px`;
+        elem.style.left = `${newLeft}px`;
+        elem.style.top = `${newTop}px`;
+        if (selectedBox === elem) {
+          boxWidthInput.value = Math.round(newWidth);
+          boxHeightInput.value = Math.round(newHeight);
+        }
+        updateAllArrows();
+      }
+
+      function stopResize() {
+        resizing = false;
+      }
+    }
+
+    function downloadBlob(blob, filename) {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    }
+
+    function downloadText(filename, text) {
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      downloadBlob(blob, filename);
+    }
+
+    function toggleArrowMode() {
+      diagramArrowMode = !diagramArrowMode;
+      arrowStartId = null;
+      if (arrowModeButton) {
+        arrowModeButton.textContent = diagramArrowMode ? 'Select start box' : 'Add arrow';
+      }
+      document.querySelectorAll('.diagram-item').forEach(item => item.classList.remove('selected'));
+    }
+
+    function updateCurrentColor(color) {
+      boxColorInput.value = color;
+    }
+
+    function selectBox(item) {
+      if (selectedBox === item) return;
+      document.querySelectorAll('.diagram-item').forEach(box => box.classList.remove('selected'));
+      selectedBox = item;
+      selectedBox.classList.add('selected');
+      selectedColorInput.value = rgbToHex(window.getComputedStyle(item).backgroundColor) || boxColorInput.value;
+      selectedTextColorInput.value = rgbToHex(window.getComputedStyle(item).color) || '#111827';
+      boxWidthInput.value = parseInt(item.style.width, 10) || defaultBoxWidth;
+      boxHeightInput.value = parseInt(item.style.height, 10) || defaultBoxHeight;
+      boxFontSizeInput.value = parseInt(item.style.fontSize, 10) || defaultBoxFontSize;
+      const shape = item.classList.contains('circle') ? 'circle' : item.classList.contains('rounded') ? 'rounded' : 'rectangle';
+      boxShapeSelect.value = shape;
+    }
+
+    function updateSelectedBoxProperty(prop, value) {
+      if (selectedBox) {
+        applyPropertyToBox(selectedBox, prop, value);
+        updateAllArrows();
+      }
+      if (prop === 'width') defaultBoxWidth = Number(value);
+      if (prop === 'height') defaultBoxHeight = Number(value);
+      if (prop === 'fontSize') defaultBoxFontSize = Number(value);
+      if (prop === 'shape') defaultBoxShape = value;
+      if (prop === 'background') selectedColorInput.value = value;
+      if (prop === 'textColor') selectedTextColorInput.value = value;
+    }
+
+    function applyPropertyToBox(box, prop, value) {
+      if (!box) return;
+      switch (prop) {
+        case 'width':
+          box.style.width = `${value}px`;
+          if (box.classList.contains('circle')) {
+            box.style.height = `${value}px`;
+          }
+          break;
+        case 'height':
+          box.style.height = `${value}px`;
+          if (box.classList.contains('circle')) {
+            box.style.width = `${value}px`;
+          }
+          break;
+        case 'fontSize':
+          box.style.fontSize = `${value}px`;
+          break;
+        case 'shape':
+          box.classList.remove('rectangle', 'rounded', 'circle');
+          box.classList.add(value);
+          if (value === 'circle') {
+            const size = Math.max(parseInt(box.style.width, 10) || defaultBoxWidth, parseInt(box.style.height, 10) || defaultBoxHeight);
+            box.style.width = `${size}px`;
+            box.style.height = `${size}px`;
+          }
+          break;
+        case 'background':
+          box.style.background = value;
+          break;
+        case 'textColor':
+          box.style.color = value;
+          const textarea = box.querySelector('textarea');
+          if (textarea) textarea.style.color = value;
+          break;
+      }
+    }
+
+    function rgbToHex(rgb) {
+      const match = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      if (!match) return '#eef2ff';
+      return `#${((1 << 24) + (parseInt(match[1], 10) << 16) + (parseInt(match[2], 10) << 8) + parseInt(match[3], 10)).toString(16).slice(1)}`;
+    }
+
+    function selectArrowPoint(item) {
+      if (!arrowStartId) {
+        arrowStartId = item.dataset.id;
+        item.classList.add('selected');
+        if (arrowModeButton) arrowModeButton.textContent = 'Select end box';
+        return;
+      }
+      if (arrowStartId === item.dataset.id) {
+        item.classList.remove('selected');
+        arrowStartId = null;
+        if (arrowModeButton) arrowModeButton.textContent = 'Select start box';
+        return;
+      }
+      createArrow(arrowStartId, item.dataset.id);
+      const startItem = diagramInner.querySelector(`[data-id="${arrowStartId}"]`);
+      if (startItem) startItem.classList.remove('selected');
+      arrowStartId = null;
+      diagramArrowMode = false;
+      if (arrowModeButton) arrowModeButton.textContent = 'Add arrow';
+    }
+
+    function createArrow(fromId, toId) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('data-from', fromId);
+      line.setAttribute('data-to', toId);
+      line.setAttribute('stroke', '#2563eb');
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('marker-end', 'url(#arrowhead)');
+      line.setAttribute('stroke-linecap', 'round');
+      ensureArrowDefs();
+      diagramSvg.appendChild(line);
+      updateArrowPosition(line);
+    }
+
+    function ensureArrowDefs() {
+      if (diagramSvg.querySelector('defs')) return;
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+      marker.setAttribute('id', 'arrowhead');
+      marker.setAttribute('markerWidth', '8');
+      marker.setAttribute('markerHeight', '8');
+      marker.setAttribute('refX', '6');
+      marker.setAttribute('refY', '3');
+      marker.setAttribute('orient', 'auto');
+      marker.setAttribute('markerUnits', 'strokeWidth');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M0,0 L6,3 L0,6 Z');
+      path.setAttribute('fill', '#2563eb');
+      marker.appendChild(path);
+      defs.appendChild(marker);
+      diagramSvg.appendChild(defs);
+    }
+
+    function updateArrowPosition(line) {
+      const fromElem = diagramInner.querySelector(`[data-id="${line.getAttribute('data-from')}"]`);
+      const toElem = diagramInner.querySelector(`[data-id="${line.getAttribute('data-to')}"]`);
+      if (!fromElem || !toElem) return;
+      const fromX = parseFloat(fromElem.style.left || 0) + fromElem.offsetWidth / 2;
+      const fromY = parseFloat(fromElem.style.top || 0) + fromElem.offsetHeight / 2;
+      const toX = parseFloat(toElem.style.left || 0) + toElem.offsetWidth / 2;
+      const toY = parseFloat(toElem.style.top || 0) + toElem.offsetHeight / 2;
+      line.setAttribute('x1', fromX);
+      line.setAttribute('y1', fromY);
+      line.setAttribute('x2', toX);
+      line.setAttribute('y2', toY);
+    }
+
+    function updateAllArrows() {
+      diagramSvg.querySelectorAll('line').forEach(line => updateArrowPosition(line));
+    }
+
+    function zoomDiagram(delta) {
+      diagramScale = Math.min(3, Math.max(0.4, diagramScale + delta));
+      updateDiagramTransform();
+    }
+
+    function resetDiagramView() {
+      diagramScale = 1;
+      panX = 0;
+      panY = 0;
+      updateDiagramTransform();
+    }
+
+    function clearDiagram() {
+      diagramInner.querySelectorAll('.diagram-item').forEach(item => item.remove());
+      diagramSvg.querySelectorAll('line').forEach(line => line.remove());
+      diagramCounter = 0;
+      arrowStartId = null;
+      diagramArrowMode = false;
+      if (arrowModeButton) arrowModeButton.textContent = 'Add arrow';
+    }
+
+    function getComputedStyleClone(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return document.createTextNode(node.textContent);
+      }
+
+      const clone = node.cloneNode(false);
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const computed = window.getComputedStyle(node);
+        clone.style.cssText = computed.cssText;
+        clone.style.boxSizing = 'border-box';
+        clone.style.background = computed.backgroundColor || '#ffffff';
+        clone.style.transform = 'none';
+        if (node.tagName === 'TEXTAREA' || node.tagName === 'INPUT') {
+          clone.value = node.value;
+        }
+      }
+
+      node.childNodes.forEach(child => {
+        clone.appendChild(getComputedStyleClone(child));
+      });
+
+      return clone;
+    }
+
+    function exportSectionImage(sectionId, filename) {
+      const section = document.getElementById(sectionId);
+      if (!section) return;
+
+      const width = section.offsetWidth;
+      const height = section.offsetHeight;
+
+      const doSvgFallback = () => {
+        const clonedSection = getComputedStyleClone(section);
+        clonedSection.style.width = `${width}px`;
+        clonedSection.style.height = `${height}px`;
+        clonedSection.style.background = '#ffffff';
+
+        const svgString = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+            <foreignObject width="100%" height="100%">
+              <div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;font-family: system-ui, sans-serif; font-size: 14px; color: #1f2937; background: white;">
+                ${new XMLSerializer().serializeToString(clonedSection)}
+              </div>
+            </foreignObject>
+          </svg>
+        `;
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        downloadBlob(svgBlob, filename.replace(/\.png$/, '.svg'));
+      };
+
+      const exportWithHtml2Canvas = () => {
+        if (!window.html2canvas) return Promise.reject();
+        return window.html2canvas(section, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          scrollX: -window.scrollX,
+          scrollY: -window.scrollY,
+          windowWidth: document.documentElement.clientWidth,
+          windowHeight: document.documentElement.clientHeight
+        }).then(canvas => new Promise(resolve => canvas.toBlob(resolve, 'image/png')));
+      };
+
+      exportWithHtml2Canvas()
+        .then(blob => {
+          if (blob) downloadBlob(blob, filename);
+          else doSvgFallback();
+        })
+        .catch(doSvgFallback);
+    }
+
+    function exportMoscowText() {
+      let text = 'MOSCOW Prioritization\n\n';
+      for (const label of ['Must', 'Should', 'Could', "Won't"]) {
+        text += `${label}:\n`;
+        columns[label].forEach(item => { text += `- ${item}\n`; });
+        text += '\n';
+      }
+      downloadText('moscow.txt', text);
+    }
+
+    function exportRiceText() {
+      let text = 'RICE Scoring\n\nFeature,Reach,Impact,Confidence,Effort,Score\n';
+      Array.from(riceTable.querySelectorAll('tr')).forEach(row => {
+        const cells = Array.from(row.children);
+        const values = [
+          cells[0].textContent.trim(),
+          cells[1].querySelector('input').value,
+          cells[2].querySelector('input').value,
+          cells[3].querySelector('input').value,
+          cells[4].querySelector('input').value,
+          cells[5].textContent.trim()
+        ];
+        text += values.join(',') + '\n';
+      });
+      downloadText('rice.txt', text);
+    }
+
+    function exportKanbanText() {
+      const sections = [
+        { name: 'To Do', id: 'todoColumn' },
+        { name: 'In Progress', id: 'inProgressColumn' },
+        { name: 'Done', id: 'doneColumn' }
+      ];
+      let text = 'Kanban Board\n\n';
+      sections.forEach(section => {
+        text += `${section.name}:\n`;
+        document.getElementById(section.id).querySelectorAll('.kanban-card').forEach(card => {
+          text += `- ${card.textContent.trim()}\n`;
+        });
+        text += '\n';
+      });
+      downloadText('kanban.txt', text);
+    }
+
+    function exportPrdText() {
+      const text = `PRD\n\n${document.getElementById('prdText').value.trim()}`;
+      downloadText('prd.txt', text);
+    }
+
+    function exportDiagramText() {
+      let text = 'Diagram Board\n\n';
+      document.querySelectorAll('#diagramInner .diagram-item textarea').forEach((textarea, index) => {
+        text += `Item ${index + 1}: ${textarea.value.trim()}\n`;
+      });
+      if (text === 'Diagram Board\n\n') text += 'No items added yet.\n';
+      downloadText('diagram.txt', text);
+    }
+
+    renderMoscow();
+  </script>
+</body>
+</html>
